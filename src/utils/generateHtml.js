@@ -34,17 +34,17 @@ function generateFieldHTML(field) {
 
   if (field.type === 'table') {
     const heads = field.columns.map((c) => `<th>${esc(c.name)}</th>`).join('');
-    const rows = Array.from({ length: field.rowCount })
-      .map((_, r) => {
+    const rows = field.rows
+      .map((row) => {
         const cells = field.columns
           .map((c) => {
-            const nm = `${fid}_r${r}_${c.id}`;
+            const nm = `${fid}_${row.id}_${c.id}`;
             if (c.cellType === 'checkbox')
               return `<td class="td-cb"><input type="checkbox" name="${nm}"></td>`;
             if (c.cellType === 'input')
               return `<td><input type="text" name="${nm}"></td>`;
-            // texto — célula estática, sem input
-            return `<td class="td-texto"></td>`;
+            // texto — conteúdo fixo pré-definido
+            return `<td class="td-texto">${esc(row.cells?.[c.id] ?? '')}</td>`;
           })
           .join('');
         return `<tr>${cells}</tr>`;

@@ -12,13 +12,17 @@ export function createField(type) {
   const base = { id: uid(), type, label: labels[type] ?? type };
   if (type === 'table') {
     const c1 = uid(), c2 = uid();
+    const cols = [
+      { id: c1, name: 'Coluna 1', cellType: 'input' },
+      { id: c2, name: 'Coluna 2', cellType: 'checkbox' },
+    ];
     return {
       ...base,
-      columns: [
-        { id: c1, name: 'Coluna 1', cellType: 'input' },
-        { id: c2, name: 'Coluna 2', cellType: 'checkbox' },
-      ],
-      rowCount: 3,
+      columns: cols,
+      rows: Array.from({ length: 3 }, () => ({
+        id: uid(),
+        cells: { [c1]: '', [c2]: false },
+      })),
     };
   }
   return base;

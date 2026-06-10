@@ -133,7 +133,7 @@ export default function Builder({ form, setForm, openModal }) {
                   </div>
                   {field.type === 'table' && (
                     <div className="table-meta">
-                      {field.columns.length} col × {field.rowCount} linhas
+                      {field.columns.length} col × {field.rows.length} linhas
                     </div>
                   )}
                 </div>

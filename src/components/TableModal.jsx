@@ -1,22 +1,52 @@
 import { uid } from '../utils/helpers';
 
 export default function TableModal({ field, onUpdate, onClose }) {
+  // ── Colunas ──────────────────────────────────────────
   const addColumn = () => {
-    onUpdate({
-      columns: [
-        ...field.columns,
-        { id: uid(), name: `Coluna ${field.columns.length + 1}`, cellType: 'text' },
-      ],
-    });
+    const cid = uid();
+    const newCol = { id: cid, name: `Coluna ${field.columns.length + 1}`, cellType: 'input' };
+    const newRows = field.rows.map((r) => ({ ...r, cells: { ...r.cells, [cid]: '' } }));
+    onUpdate({ columns: [...field.columns, newCol], rows: newRows });
   };
 
   const removeColumn = (cid) => {
     if (field.columns.length <= 1) return;
-    onUpdate({ columns: field.columns.filter((c) => c.id !== cid) });
+    const newRows = field.rows.map((r) => {
+      const cells = { ...r.cells };
+      delete cells[cid];
+      return { ...r, cells };
+    });
+    onUpdate({ columns: field.columns.filter((c) => c.id !== cid), rows: newRows });
   };
 
   const updateColumn = (cid, patch) => {
-    onUpdate({ columns: field.columns.map((c) => (c.id === cid ? { ...c, ...patch } : c)) });
+    const newColumns = field.columns.map((c) => (c.id === cid ? { ...c, ...patch } : c));
+    let newRows = field.rows;
+    if (patch.cellType !== undefined) {
+      const def = patch.cellType === 'checkbox' ? false : '';
+      newRows = field.rows.map((r) => ({ ...r, cells: { ...r.cells, [cid]: def } }));
+    }
+    onUpdate({ columns: newColumns, rows: newRows });
+  };
+
+  // ── Linhas ───────────────────────────────────────────
+  const addRow = () => {
+    const cells = {};
+    field.columns.forEach((c) => { cells[c.id] = c.cellType === 'checkbox' ? false : ''; });
+    onUpdate({ rows: [...field.rows, { id: uid(), cells }] });
+  };
+
+  const removeRow = (rid) => {
+    if (field.rows.length <= 1) return;
+    onUpdate({ rows: field.rows.filter((r) => r.id !== rid) });
+  };
+
+  const updateCell = (rid, cid, value) => {
+    onUpdate({
+      rows: field.rows.map((r) =>
+        r.id === rid ? { ...r, cells: { ...r.cells, [cid]: value } } : r
+      ),
+    });
   };
 
   return (
@@ -28,6 +58,7 @@ export default function TableModal({ field, onUpdate, onClose }) {
         </div>
 
         <div className="modal-body">
+          {/* Colunas */}
           <div className="modal-section">
             <div className="modal-section-header">
               <span>Colunas</span>
@@ -54,62 +85,63 @@ export default function TableModal({ field, onUpdate, onClose }) {
                     className="btn-remove-small"
                     onClick={() => removeColumn(col.id)}
                     disabled={field.columns.length <= 1}
-                  >
-                    ✕
-                  </button>
+                  >✕</button>
                 </div>
               ))}
             </div>
           </div>
 
+          {/* Linhas */}
           <div className="modal-section">
             <div className="modal-section-header">
-              <span>Número de linhas</span>
-            </div>
-            <input
-              type="number"
-              className="row-count-input"
-              min={1}
-              max={50}
-              value={field.rowCount}
-              onChange={(e) =>
-                onUpdate({ rowCount: Math.max(1, Math.min(50, Number(e.target.value))) })
-              }
-            />
-          </div>
-
-          <div className="modal-section">
-            <div className="modal-section-header">
-              <span>Pré-visualização</span>
+              <span>Linhas ({field.rows.length})</span>
+              <button className="btn-add" onClick={addRow}>+ Linha</button>
             </div>
             <div className="table-preview-scroll">
               <table className="preview-table">
                 <thead>
                   <tr>
                     {field.columns.map((c) => (
-                      <th key={c.id}>{c.name || 'Col'}</th>
+                      <th key={c.id}>
+                        {c.name || 'Col'}
+                        <span className="col-type-hint">
+                          {c.cellType === 'texto' ? ' · texto' : c.cellType === 'input' ? ' · input' : ' · ✓'}
+                        </span>
+                      </th>
                     ))}
+                    <th style={{ width: 32 }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {Array.from({ length: Math.min(field.rowCount, 5) }).map((_, r) => (
-                    <tr key={r}>
-                      {field.columns.map((c) => (
-                        <td key={c.id}>
-                          {c.cellType === 'checkbox' && <input type="checkbox" disabled />}
-                          {c.cellType === 'input' && <input type="text" disabled placeholder="—" />}
-                          {c.cellType === 'texto' && <span style={{ fontSize: 12, color: '#94a3b8' }}>abc</span>}
+                  {field.rows.map((row) => (
+                    <tr key={row.id}>
+                      {field.columns.map((col) => (
+                        <td key={col.id}>
+                          {col.cellType === 'texto' && (
+                            <input
+                              type="text"
+                              value={row.cells[col.id] ?? ''}
+                              onChange={(e) => updateCell(row.id, col.id, e.target.value)}
+                              placeholder="texto fixo..."
+                            />
+                          )}
+                          {col.cellType === 'input' && (
+                            <input type="text" disabled placeholder="—" />
+                          )}
+                          {col.cellType === 'checkbox' && (
+                            <input type="checkbox" disabled />
+                          )}
                         </td>
                       ))}
-                    </tr>
-                  ))}
-                  {field.rowCount > 5 && (
-                    <tr>
-                      <td colSpan={field.columns.length} className="more-rows">
-                        +{field.rowCount - 5} linhas
+                      <td>
+                        <button
+                          className="btn-remove-small"
+                          onClick={() => removeRow(row.id)}
+                          disabled={field.rows.length <= 1}
+                        >✕</button>
                       </td>
                     </tr>
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -117,9 +149,7 @@ export default function TableModal({ field, onUpdate, onClose }) {
         </div>
 
         <div className="modal-footer">
-          <button className="btn-primary" onClick={onClose}>
-            Salvar e Fechar
-          </button>
+          <button className="btn-primary" onClick={onClose}>Salvar e Fechar</button>
         </div>
       </div>
     </div>
